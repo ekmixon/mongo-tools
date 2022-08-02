@@ -23,13 +23,13 @@ def version_tuple(version):
     """Returns a version tuple that can be used for numeric sorting
     of version strings such as '2.6.0-rc1' and '2.4.0'"""
 
-    RC_OFFSET = -100
     version_parts = re.split(r'\.|-', version[0])
 
     if version_parts[-1].startswith("rc"):
         rc_part = version_parts.pop()
         rc_part = rc_part.split('rc')[1]
 
+        RC_OFFSET = -100
         # RC versions are weighted down to allow future RCs and general
         # releases to be sorted in ascending order (e.g., 2.6.0-rc1,
         # 2.6.0-rc2, 2.6.0).
@@ -115,28 +115,25 @@ class MultiVersionDownloaderBase :
         try:
             os.makedirs(self.link_dir)
         except OSError as exc:
-            if exc.errno == errno.EEXIST and os.path.isdir(self.link_dir):
-                pass
-            else: raise
+            if exc.errno != errno.EEXIST or not os.path.isdir(self.link_dir):
+                raise
 
         for executable in os.listdir(os.path.join(installed_dir, "bin")):
-            link_name = "%s-%s" % (executable, version)
+            link_name = f"{executable}-{version}"
             # support for windows
             if executable.endswith(".exe") or executable.endswith(".pdb"):
-                link_name = "%s-%s.%s" % (executable[:-4], version, executable[len(executable)-3:])
+                link_name = f"{executable[:-4]}-{version}.{executable[len(executable)-3:]}"
 
             try:
                 os.symlink(os.path.join(installed_dir, "bin", executable),\
-                           os.path.join(self.link_dir, link_name))
+                               os.path.join(self.link_dir, link_name))
             except Exception as exc:
                 try:
                     # support for windows
                     shutil.copy2(os.path.join(installed_dir, "bin", executable),\
-                               os.path.join(self.link_dir, link_name))
+                                   os.path.join(self.link_dir, link_name))
                 except:
-                    if exc.errno == errno.EEXIST:
-                        pass
-                    else:
+                    if exc.errno != errno.EEXIST:
                         raise
 
 class MultiVersionDownloader(MultiVersionDownloaderBase) :
@@ -145,8 +142,8 @@ class MultiVersionDownloader(MultiVersionDownloaderBase) :
         self.install_dir = install_dir
         self.link_dir = link_dir
         match = re.compile("(.*)\/(.*)").match(platform)
-        self.platform = match.group(1)
-        self.arch = match.group(2)
+        self.platform = match[1]
+        self.arch = match[2]
         self._links = None
 
     @property
@@ -167,9 +164,11 @@ class MultiVersionDownloader(MultiVersionDownloaderBase) :
 
                 urls.append((link_version, link_url))
 
-        if len(urls) == 0:
-            raise Exception("Cannot find a link for version %s, versions %s found." \
-                % (version, self.links))
+        if not urls:
+            raise Exception(
+                f"Cannot find a link for version {version}, versions {self.links} found."
+            )
+
 
         urls.sort(key=version_tuple)
         full_version = urls[-1][0]
@@ -177,8 +176,7 @@ class MultiVersionDownloader(MultiVersionDownloaderBase) :
         return url, full_version
 
     def download_links(self):
-        href = "http://dl.mongodb.org/dl/%s/%s" \
-               % (self.platform, self.arch)
+        href = f"http://dl.mongodb.org/dl/{self.platform}/{self.arch}"
 
         html = urllib2.urlopen(href).read()
         links = {}
@@ -186,11 +184,11 @@ class MultiVersionDownloader(MultiVersionDownloaderBase) :
             match = None
             for ext in ["tgz", "zip"]:
                 match = re.compile("http:\/\/downloads\.mongodb\.org\/%s/mongodb-%s-%s-([^\"]*)\.%s" \
-                    % (self.platform, self.platform, self.arch, ext)).search(line)
+                        % (self.platform, self.platform, self.arch, ext)).search(line)
                 if match != None:
                     break
 
-            if match == None:
+            if match is None:
                 continue
             link = match.group(0)
             version = match.group(1)
@@ -205,26 +203,23 @@ class LatestMultiVersionDownloader(MultiVersionDownloaderBase) :
         self.install_dir = install_dir
         self.link_dir = link_dir
         match = re.compile("(.*)\/(.*)").match(platform)
-        self.platform = match.group(1)
-        self.arch = match.group(2)
+        self.platform = match[1]
+        self.arch = match[2]
         self._links = None
         self.use_ssl = use_ssl
         self.os = os
 
     def gen_url(self, version):
-        ext = "tgz"
-        if "win" in self.platform:
-            ext = "zip"
+        ext = "zip" if "win" in self.platform else "tgz"
         if self.use_ssl:
-            if version == "2.4":
-                enterprise_string = "subscription"
-            else:
-                enterprise_string = "enterprise"
-            full_version = self.os + "-v" + version + "-latest"
-            url = "http://downloads.10gen.com/%s/mongodb-%s-%s-%s-%s.%s" % ( self.platform, self.platform, self.arch, enterprise_string, full_version, ext )
+            enterprise_string = "subscription" if version == "2.4" else "enterprise"
+            full_version = f"{self.os}-v{version}-latest"
+            url = f"http://downloads.10gen.com/{self.platform}/mongodb-{self.platform}-{self.arch}-{enterprise_string}-{full_version}.{ext}"
+
         else:
-            full_version = "v" + version + "-latest"
-            url = "http://downloads.mongodb.org/%s/mongodb-%s-%s-%s.%s" % ( self.platform, self.platform, self.arch, full_version, ext )
+            full_version = f"v{version}-latest"
+            url = f"http://downloads.mongodb.org/{self.platform}/mongodb-{self.platform}-{self.arch}-{full_version}.{ext}"
+
         return url, full_version
 
 CL_HELP_MESSAGE = \

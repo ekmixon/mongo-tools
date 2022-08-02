@@ -147,7 +147,7 @@ class HTTPHandler(object):
         self.url_opener = urllib2.build_opener(digest_handler, urllib2.HTTPErrorProcessor())
 
     def _make_url(self, endpoint):
-        return "%s/%s/" % (self.url_root.rstrip("/"), endpoint.strip("/"))
+        return f'{self.url_root.rstrip("/")}/{endpoint.strip("/")}/'
 
     def post(self, endpoint, data=None, headers=None, timeout_secs=_TIMEOUT_SECS):
         """

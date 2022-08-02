@@ -38,12 +38,12 @@ def _execute_suite(suite, logging_config):
             random.shuffle(group.tests)
 
         if resmokelib.config.DRY_RUN == "tests":
-            sb = []
-            sb.append("Tests that would be run for %ss in suite %s:"
-                      % (group.test_kind, suite.get_name()))
+            sb = [
+                f"Tests that would be run for {group.test_kind}s in suite {suite.get_name()}:"
+            ]
+
             if len(group.tests) > 0:
-                for test in group.tests:
-                    sb.append(test)
+                sb.extend(iter(group.tests))
             else:
                 sb.append("(no tests)")
             logger.info("\n".join(sb))
@@ -80,9 +80,13 @@ def _execute_suite(suite, logging_config):
 
 def _log_summary(logger, suites, time_taken):
     if len(suites) > 1:
-        sb = []
-        sb.append("Summary of all suites: %d suites ran in %0.2f seconds"
-                  % (len(suites), time_taken))
+        sb = [
+            (
+                "Summary of all suites: %d suites ran in %0.2f seconds"
+                % (len(suites), time_taken)
+            )
+        ]
+
         for suite in suites:
             suite_sb = []
             suite.summarize(suite_sb)
@@ -105,12 +109,25 @@ def _dump_suite_config(suite, logging_config):
     TODO: include the "options" key in the result
     """
 
-    sb = []
-    sb.append("YAML configuration of suite %s" % (suite.get_name()))
-    sb.append(resmokelib.utils.dump_yaml({"selector": suite.get_selector_config()}))
-    sb.append("")
-    sb.append(resmokelib.utils.dump_yaml({"executor": suite.get_executor_config()}))
-    sb.append("")
+    sb = [f"YAML configuration of suite {suite.get_name()}"]
+    sb.extend(
+        (
+            resmokelib.utils.dump_yaml(
+                {"selector": suite.get_selector_config()}
+            ),
+            "",
+        )
+    )
+
+    sb.extend(
+        (
+            resmokelib.utils.dump_yaml(
+                {"executor": suite.get_executor_config()}
+            ),
+            "",
+        )
+    )
+
     sb.append(resmokelib.utils.dump_yaml({"logging": logging_config}))
     return "\n".join(sb)
 

@@ -246,7 +246,7 @@ def update_config_vars(values):
     _config.WT_INDEX_CONFIG = config.pop("wiredTigerIndexConfigString")
 
     if config:
-        raise optparse.OptionValueError("Unknown option(s): %s" % (config.keys()))
+        raise optparse.OptionValueError(f"Unknown option(s): {config.keys()}")
 
 
 def get_suites(values, args):
@@ -278,7 +278,7 @@ def get_named_suites():
     """
 
     # Skip "with_server" and "no_server" because they do not define any test files to run.
-    executor_only = set(["with_server", "no_server"])
+    executor_only = {"with_server", "no_server"}
     suite_names = [suite for suite in resmokeconfig.NAMED_SUITES if suite not in executor_only]
     suite_names.sort()
     return suite_names
@@ -360,6 +360,4 @@ def _expand_user(pathname):
     """
     Wrapper around os.path.expanduser() to do nothing when given None.
     """
-    if pathname is None:
-        return None
-    return os.path.expanduser(pathname)
+    return None if pathname is None else os.path.expanduser(pathname)

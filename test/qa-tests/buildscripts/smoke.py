@@ -161,10 +161,10 @@ def buildlogger(cmd, is_global=False):
 
 def clean_dbroot(dbroot="", nokill=False):
     # Clean entire /data/db dir if --with-cleanbb, else clean specific database path.
-    if clean_whole_dbroot and not (small_oplog or small_oplog_rs):
-        dbroot = os.path.normpath(smoke_db_prefix + "/data/db")
+    if clean_whole_dbroot and not small_oplog and not small_oplog_rs:
+        dbroot = os.path.normpath(f"{smoke_db_prefix}/data/db")
     if os.path.exists(dbroot):
-        print("clean_dbroot: %s" % dbroot)
+        print(f"clean_dbroot: {dbroot}")
         cleanbb.cleanup(dbroot, nokill)
 
 
@@ -179,9 +179,9 @@ class mongod(NullMongod):
         self._stdout_pipe = None
 
     def ensure_test_dirs(self):
-        utils.ensureDir(smoke_db_prefix + "/tmp/unittest/")
-        utils.ensureDir(smoke_db_prefix + "/data/")
-        utils.ensureDir(smoke_db_prefix + "/data/db/")
+        utils.ensureDir(f"{smoke_db_prefix}/tmp/unittest/")
+        utils.ensureDir(f"{smoke_db_prefix}/data/")
+        utils.ensureDir(f"{smoke_db_prefix}/data/db/")
 
     def check_mongo_port(self, port=27017):
         sock = socket.socket()
@@ -437,7 +437,7 @@ class mongod(NullMongod):
 
 class Bug(Exception):
     def __str__(self):
-        return 'bug in smoke.py: ' + super(Bug, self).__str__()
+        return f'bug in smoke.py: {super(Bug, self).__str__()}'
 
 class TestFailure(Exception):
     pass
@@ -456,7 +456,7 @@ class TestServerFailure(TestFailure):
         self.status = -1 # this is meaningless as an exit code, but
                          # that's the point.
     def __str__(self):
-        return 'mongod not running after executing test %s' % self.path
+        return f'mongod not running after executing test {self.path}'
 
 def check_db_hashes(master, slave):
     # Need to pause a bit so a slave might catch up...
@@ -518,19 +518,23 @@ def check_db_hashes(master, slave):
 
 
 def ternary( b , l="true", r="false" ):
-    if b:
-        return l
-    return r
+    return l if b else r
 
 # Blech.
 def skipTest(path):
     basename = os.path.basename(path)
     parentPath = os.path.dirname(path)
     parentDir = os.path.basename(parentPath)
-    if small_oplog or small_oplog_rs: # For tests running in parallel
-        if basename in ["cursor8.js", "indexh.js", "dropdb.js", "dropdb_race.js", 
-                        "connections_opened.js", "opcounters_write_cmd.js", "dbadmin.js"]:
-            return True
+    if (small_oplog or small_oplog_rs) and basename in [
+        "cursor8.js",
+        "indexh.js",
+        "dropdb.js",
+        "dropdb_race.js",
+        "connections_opened.js",
+        "opcounters_write_cmd.js",
+        "dbadmin.js",
+    ]:
+        return True
     if use_ssl or use_tls:
         # Skip tests using mongobridge since it does not support SSL
         # TODO: Remove when SERVER-10910 has been resolved.  
@@ -1098,24 +1102,26 @@ def expand_suites(suites,expandUseDB=True):
                                   'slow2',
                                   'tool'],
                                  expandUseDB=expandUseDB)
-        if suite == 'dbtest' or suite == 'test':
-            if os.sys.platform == "win32":
-                program = 'dbtest.exe'
-            else:
-                program = 'dbtest'
+        if suite == 'dbtest':
+            program = 'dbtest.exe' if os.sys.platform == "win32" else 'dbtest'
+            (globstr, usedb) = (program, False)
+        elif suite == 'test':
+            program = 'dbtest.exe' if os.sys.platform == "win32" else 'dbtest'
             (globstr, usedb) = (program, False)
         elif suite == 'mongosTest':
-            if os.sys.platform == "win32":
-                program = 'mongos.exe'
-            else:
-                program = 'mongos'
+            program = 'mongos.exe' if os.sys.platform == "win32" else 'mongos'
             tests += [(os.path.join(mongo_repo, program), False)]
         elif os.path.exists( suite ):
-            usedb = True
-            for name in suiteGlobalConfig:
-                if suite in glob.glob( "jstests/" + suiteGlobalConfig[name][0] ):
-                    usedb = suiteGlobalConfig[name][1]
-                    break
+            usedb = next(
+                (
+                    suiteGlobalConfig[name][1]
+                    for name in suiteGlobalConfig
+                    if suite
+                    in glob.glob(f"jstests/{suiteGlobalConfig[name][0]}")
+                ),
+                True,
+            )
+
             tests += [ ( os.path.join( mongo_repo , suite ) , usedb ) ]
         elif suite in module_suites:
             # Currently we connect to a database in all module tests since there's no mechanism yet
@@ -1128,16 +1134,13 @@ def expand_suites(suites,expandUseDB=True):
             try:
                 globstr, usedb = suiteGlobalConfig[suite]
             except KeyError:
-                raise Exception('unknown test suite %s' % suite)
+                raise Exception(f'unknown test suite {suite}')
 
         if globstr:
             if usedb and not expandUseDB:
                 tests += [ (suite,False) ]
             else:
-                if globstr.endswith('.js'):
-                    loc = 'jstests/'
-                else:
-                    loc = ''
+                loc = 'jstests/' if globstr.endswith('.js') else ''
                 globstr = os.path.join(mongo_repo, (os.path.join(loc, globstr)))
                 globstr = os.path.normpath(globstr)
                 paths = glob.glob(globstr)
@@ -1210,9 +1213,8 @@ def set_globals(options, tests):
         keyFile = os.path.join(mongo_repo, 'jstests', 'libs', 'authTestsKey')
 
     if keyFile:
-        f = open(keyFile, 'r')
-        keyFileData = re.sub(r'\s', '', f.read()) # Remove all whitespace
-        f.close()
+        with open(keyFile, 'r') as f:
+            keyFileData = re.sub(r'\s', '', f.read()) # Remove all whitespace
         os.chmod(keyFile, stat.S_IRUSR | stat.S_IWUSR)
     else:
         keyFileData = None

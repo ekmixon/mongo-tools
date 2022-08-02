@@ -33,8 +33,7 @@ def get_tags(pathname):
     """
 
     with open(pathname) as fp:
-        match = _JSTEST_TAGS_RE.match(fp.read())
-        if match:
+        if match := _JSTEST_TAGS_RE.match(fp.read()):
             try:
                 # TODO: it might be worth supporting the block (indented) style of YAML lists in
                 #       addition to the flow (bracketed) style

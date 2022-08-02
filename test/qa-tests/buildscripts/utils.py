@@ -15,12 +15,12 @@ import hashlib
 def getAllSourceFiles( arr=None , prefix="." ):
     if arr is None:
         arr = []
-    
+
     if not os.path.isdir( prefix ):
         # assume a file
         arr.append( prefix )
         return arr
-        
+
     for x in os.listdir( prefix ):
         if x.startswith( "." ) or x.startswith( "pcre-" ) or x.startswith( "32bit" ) or x.startswith( "mongodb-" ) or x.startswith("debian") or x.startswith( "mongo-cxx-driver" ):
             continue
@@ -29,13 +29,12 @@ def getAllSourceFiles( arr=None , prefix="." ):
         #      Remove after v8-3.25 migration.
         if x.find("v8-3.25") != -1:
             continue
-        full = prefix + "/" + x
+        full = f"{prefix}/{x}"
         if os.path.isdir( full ) and not os.path.islink( full ):
             getAllSourceFiles( arr , full )
-        else:
-            if full.endswith( ".cpp" ) or full.endswith( ".h" ) or full.endswith( ".c" ):
-                full = full.replace( "//" , "/" )
-                arr.append( full )
+        elif full.endswith( ".cpp" ) or full.endswith( ".h" ) or full.endswith( ".c" ):
+            full = full.replace( "//" , "/" )
+            arr.append( full )
 
     return arr
 
@@ -57,15 +56,13 @@ def getGitBranchString( prefix="" , postfix="" ):
         par = t[len(t)-2]
         m = re.compile( ".*_([vV]\d+\.\d+)$" ).match( par )
         if m is not None:
-            return prefix + m.group(1).lower() + postfix
+            return prefix + m[1].lower() + postfix
         if par.find("Nightly") > 0:
             return ""
 
 
     b = getGitBranch()
-    if b == None or b == "master":
-        return ""
-    return prefix + b + postfix
+    return "" if b is None or b == "master" else prefix + b + postfix
 
 def getGitVersion():
     if not os.path.exists( ".git" ) or not os.path.isdir(".git"):
@@ -75,10 +72,8 @@ def getGitVersion():
     if not version.startswith( "ref: " ):
         return version
     version = version[5:]
-    f = ".git/" + version
-    if not os.path.exists( f ):
-        return version
-    return open( f , 'r' ).read().strip()
+    f = f".git/{version}"
+    return open( f , 'r' ).read().strip() if os.path.exists( f ) else version
 
 def execsys( args ):
     import subprocess
@@ -121,16 +116,14 @@ def filterExists(paths):
 def ensureDir( name ):
     d = os.path.dirname( name )
     if not os.path.exists( d ):
-        print( "Creating dir: " + name );
+        print(f"Creating dir: {name}");
         os.makedirs( d )
         if not os.path.exists( d ):
-            raise "Failed to create dir: " + name
+            raise f"Failed to create dir: {name}"
 
 
 def distinctAsString( arr ):
-    s = set()
-    for x in arr:
-        s.add( str(x) )
+    s = {str(x) for x in arr}
     return list(s)
 
 def checkMongoPort( port=27017 ):
@@ -170,7 +163,7 @@ def which(executable):
 
 def md5sum( file ):
     #TODO error handling, etc..
-    return execsys( "md5sum " + file )[0].partition(" ")[0]
+    return execsys(f"md5sum {file}")[0].partition(" ")[0]
 
 def md5string( a_string ):
     return hashlib.md5(a_string).hexdigest()
@@ -189,15 +182,16 @@ def find_python(min_version=(2, 5)):
         try:
             out, err = subprocess.Popen([binary, '-V'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
             for stream in (out, err):
-                match = version.search(stream)
-                if match:
-                    versiontuple = tuple(map(int, match.group(1).split('.')))
+                if match := version.search(stream):
+                    versiontuple = tuple(map(int, match[1].split('.')))
                     if versiontuple >= min_version:
                         return which(binary)
         except:
             pass
 
-    raise Exception('could not find suitable Python (version >= %s)' % '.'.join(str(v) for v in min_version))
+    raise Exception(
+        f"could not find suitable Python (version >= {'.'.join((str(v) for v in min_version))})"
+    )
 
 def smoke_command(*args):
     # return a list of arguments that comprises a complete

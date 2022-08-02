@@ -27,10 +27,7 @@ def shouldKill( c, root=None ):
     if ( c.find( "buildbot" ) >= 0 or c.find( "slave" ) >= 0 ) and c.find( "/mongo/" ) >= 0:
         return True
 
-    if c.find( "xml-data/build-dir" ) >= 0: # for bamboo
-        return True
-
-    return False
+    return c.find( "xml-data/build-dir" ) >= 0
 
 def killprocs( signal="", root=None ):
     killed = 0
@@ -98,8 +95,5 @@ if __name__ == "__main__":
     parser.add_option("--nokill", dest='nokill', default=False, action='store_true')
     (options, args) = parser.parse_args()
 
-    root = "/data/db/"
-    if len(args) > 0:
-        root = args[0]
-
+    root = args[0] if len(args) > 0 else "/data/db/"
     cleanup( root , options.nokill )

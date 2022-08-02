@@ -40,7 +40,7 @@ class TestGroupExecutor(object):
         """
 
         # Build a logger for executing this group of tests.
-        logger_name = "%s:%s" % (exec_logger.name, test_group.test_kind)
+        logger_name = f"{exec_logger.name}:{test_group.test_kind}"
         self.logger = logging.loggers.new_logger(logger_name, parent=exec_logger)
 
         self.logging_config = logging_config
@@ -270,7 +270,7 @@ class TestGroupExecutor(object):
 
         if build_id is not None:
             endpoint = logging.buildlogger.APPEND_GLOBAL_LOGS_ENDPOINT % {"build_id": build_id}
-            url = "%s/%s/" % (_config.BUILDLOGGER_URL.rstrip("/"), endpoint.strip("/"))
+            url = f'{_config.BUILDLOGGER_URL.rstrip("/")}/{endpoint.strip("/")}/'
             logger.info("Writing output of job #%d to %s.", job_num, url)
 
         report = _report.TestReport(logger,

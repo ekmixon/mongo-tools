@@ -55,13 +55,7 @@ def iglob(globbed_pathname):
         return
 
     # **, **/, or **/a
-    if index == 0:
-        expand = _expand_curdir
-
-    # a/** or a/**/ or a/**/b
-    else:
-        expand = _expand
-
+    expand = _expand_curdir if index == 0 else _expand
     prefix_parts = parts[:index]
     suffix_parts = parts[index + 1:]
 
@@ -72,11 +66,9 @@ def iglob(globbed_pathname):
         if not suffix_parts:
             yield path
 
-        # Avoid following symlinks to avoid an infinite loop
         elif suffix_parts and kind == "dir" and not os.path.islink(path):
             path = os.path.join(path, suffix)
-            for pathname in iglob(path):
-                yield pathname
+            yield from iglob(path)
 
 
 def _split_path(pathname):
@@ -130,10 +122,7 @@ def _find_globstar(parts):
     Return -1 if "**" is not found in the list.
     """
 
-    for (i, p) in enumerate(parts):
-        if p == _GLOBSTAR:
-            return i
-    return -1
+    return next((i for i, p in enumerate(parts) if p == _GLOBSTAR), -1)
 
 
 def _list_dir(pathname):
@@ -173,8 +162,7 @@ def _expand(pathname):
 
     for d in dirs:
         path = os.path.join(pathname, d)
-        for x in _expand(path):
-            yield x
+        yield from _expand(path)
 
 
 def _expand_curdir(pathname):
@@ -198,5 +186,4 @@ def _expand_curdir(pathname):
         yield ("file", f)
 
     for d in dirs:
-        for x in _expand(d):
-            yield x
+        yield from _expand(d)

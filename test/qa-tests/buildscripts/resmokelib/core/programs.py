@@ -55,18 +55,14 @@ def mongod_program(logger, executable=None, process_kwargs=None, **kwargs):
         kwargs["journal"] = ""
 
     # Command line options override the YAML configuration.
-    for opt_name in shortcut_opts:
-        opt_value = shortcut_opts[opt_name]
+    for opt_name, opt_value in shortcut_opts.items():
         if opt_name in opts_without_vals:
             # Options that are specified as --flag on the command line are represented by a boolean
             # value where True indicates that the flag should be included in 'kwargs'.
             if opt_value:
                 kwargs[opt_name] = ""
-        else:
-            # Options that are specified as --key=value on the command line are represented by a
-            # value where None indicates that the key-value pair shouldn't be included in 'kwargs'.
-            if opt_value is not None:
-                kwargs[opt_name] = opt_value
+        elif opt_value is not None:
+            kwargs[opt_name] = opt_value
 
     # Override the storage engine specified on the command line with "wiredTiger" if running a
     # config server replica set.
@@ -168,9 +164,7 @@ def mongo_shell_program(logger, executable=None, filename=None, process_kwargs=N
         eval_sb.append(str(kwargs.pop("eval")))
 
     eval_str = "; ".join(eval_sb)
-    args.append("--eval")
-    args.append(eval_str)
-
+    args.extend(("--eval", eval_str))
     if config.SHELL_READ_MODE is not None:
         kwargs["readMode"] = config.SHELL_READ_MODE
 
@@ -200,12 +194,12 @@ def _format_shell_vars(sb, path, value):
 
     # Only need to do special handling for JSON objects.
     if not isinstance(value, dict):
-        sb.append("%s = %s" % (path, json.dumps(value)))
+        sb.append(f"{path} = {json.dumps(value)}")
         return
 
     # Avoid including curly braces and colons in output so that the command invocation can be
     # copied and run through bash.
-    sb.append("%s = new Object()" % (path))
+    sb.append(f"{path} = new Object()")
     for subkey in value:
         _format_shell_vars(sb, ".".join((path, subkey)), value[subkey])
 
@@ -260,7 +254,7 @@ def _format_test_data_set_parameters(set_parameters):
             param_value = "true" if param_value else "false"
         elif isinstance(param_value, dict):
             raise TypeError("Non-scalar setParameter values are not currently supported.")
-        params.append("%s=%s" % (param_name, param_value))
+        params.append(f"{param_name}={param_value}")
     return ",".join(params)
 
 def _apply_set_parameters(args, set_parameter):
@@ -275,7 +269,7 @@ def _apply_set_parameters(args, set_parameter):
         if isinstance(param_value, bool):
             param_value = "true" if param_value else "false"
         args.append("--setParameter")
-        args.append("%s=%s" % (param_name, param_value))
+        args.append(f"{param_name}={param_value}")
 
 
 def _apply_kwargs(args, kwargs):
@@ -288,7 +282,7 @@ def _apply_kwargs(args, kwargs):
 
     for arg_name in kwargs:
         arg_value = str(kwargs[arg_name])
-        args.append("--%s" % (arg_name))
+        args.append(f"--{arg_name}")
         if arg_value:
             args.append(arg_value)
 

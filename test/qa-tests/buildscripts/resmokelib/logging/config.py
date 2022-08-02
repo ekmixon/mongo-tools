@@ -37,7 +37,9 @@ def apply_config(logging_config):
                           loggers.FIXTURE_LOGGER_NAME,
                           loggers.TESTS_LOGGER_NAME)
 
-    if not all(component in logging_config for component in logging_components):
+    if any(
+        component not in logging_config for component in logging_components
+    ):
         raise ValueError("Logging configuration should contain %s, %s, and %s components"
                          % logging_components)
 

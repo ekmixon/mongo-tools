@@ -39,12 +39,12 @@ def _log_on_error(func):
             return func(*args, **kwargs)
         except urllib2.HTTPError as err:
             sb = []  # String builder.
-            sb.append("HTTP Error %s: %s" % (err.code, err.msg))
-            sb.append("POST %s" % (err.filename))
+            sb.append(f"HTTP Error {err.code}: {err.msg}")
+            sb.append(f"POST {err.filename}")
 
             for name in err.hdrs:
                 value = err.hdrs[name]
-                sb.append("  %s: %s" % (name, value))
+                sb.append(f"  {name}: {value}")
 
             # Try to read the response back from the server.
             if hasattr(err, "read"):

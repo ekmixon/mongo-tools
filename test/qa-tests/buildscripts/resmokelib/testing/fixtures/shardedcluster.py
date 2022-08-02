@@ -175,7 +175,7 @@ class ShardedClusterFixture(interface.Fixture):
         the config server of a sharded cluster.
         """
 
-        logger_name = "%s:configsvr" % (self.logger.name)
+        logger_name = f"{self.logger.name}:configsvr"
         mongod_logger = logging.loggers.new_logger(logger_name, parent=self.logger)
 
         mongod_options = copy.deepcopy(self.mongod_options)
@@ -217,7 +217,7 @@ class ShardedClusterFixture(interface.Fixture):
         a sharded cluster.
         """
 
-        logger_name = "%s:mongos" % (self.logger.name)
+        logger_name = f"{self.logger.name}:mongos"
         mongos_logger = logging.loggers.new_logger(logger_name, parent=self.logger)
 
         mongos_options = copy.deepcopy(self.mongos_options)

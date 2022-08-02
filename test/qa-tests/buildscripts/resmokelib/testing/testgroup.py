@@ -127,6 +127,6 @@ class TestGroup(object):
         if report.num_errored > 0:
             sb.append("The following tests had errors:")
             for test_info in report.get_errored():
-                sb.append("    %s" % (test_info.test_id))
+                sb.append(f"    {test_info.test_id}")
 
         return summary

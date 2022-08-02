@@ -124,7 +124,7 @@ class CleanEveryN(CustomBehavior):
 
             # Raise this after calling setup in case --continueOnFailure was specified.
             if not teardown_success:
-                raise errors.TestFailure("%s did not exit cleanly" % (self.fixture))
+                raise errors.TestFailure(f"{self.fixture} did not exit cleanly")
 
 
 class CheckReplDBHash(CustomBehavior):
@@ -140,7 +140,7 @@ class CheckReplDBHash(CustomBehavior):
 
     def __init__(self, logger, fixture):
         if not isinstance(fixture, fixtures.ReplFixture):
-            raise TypeError("%s does not support replication" % (fixture.__class__.__name__))
+            raise TypeError(f"{fixture.__class__.__name__} does not support replication")
 
         CustomBehavior.__init__(self, logger, fixture)
 
@@ -285,12 +285,10 @@ class CheckReplDBHash(CustomBehavior):
         for missing_db in missing_on_secondary:
             db = primary_conn[missing_db]
             coll_names = db.collection_names()
-            non_system_colls = [name for name in coll_names if not name.startswith("system.")]
-
-            # It is only an error if there are any non-system collections in the database,
-            # otherwise it's not well defined whether they should exist or not.
-            if non_system_colls:
-                sb.append("Database %s present on primary but not on secondary." % (missing_db))
+            if non_system_colls := [
+                name for name in coll_names if not name.startswith("system.")
+            ]:
+                sb.append(f"Database {missing_db} present on primary but not on secondary.")
                 CheckReplDBHash._dump_all_collections(db, non_system_colls, sb)
                 success = False
 
@@ -302,12 +300,10 @@ class CheckReplDBHash(CustomBehavior):
             # logic that is duplicated here can be consolidated.
             list_coll_output = db.command("listCollections")["cursor"]["firstBatch"]
             coll_names = [coll["name"] for coll in list_coll_output]
-            non_system_colls = [name for name in coll_names if not name.startswith("system.")]
-
-            # It is only an error if there are any non-system collections in the database,
-            # otherwise it's not well defined if it should exist or not.
-            if non_system_colls:
-                sb.append("Database %s present on secondary but not on primary." % (missing_db))
+            if non_system_colls := [
+                name for name in coll_names if not name.startswith("system.")
+            ]:
+                sb.append(f"Database {missing_db} present on secondary but not on primary.")
                 CheckReplDBHash._dump_all_collections(db, non_system_colls, sb)
                 success = False
 
@@ -385,15 +381,18 @@ class CheckReplDBHash(CustomBehavior):
                 # Still fail if the collection is not capped on the secondary.
                 if not secondary_db.command({"collStats": coll_name})["capped"]:
                     success = False
-                    sb.append("%s.%s collection is capped on primary but not on secondary."
-                              % (primary_db.name, coll_name))
-                sb.append("%s.%s collection is capped, ignoring." % (primary_db.name, coll_name))
+                    sb.append(
+                        f"{primary_db.name}.{coll_name} collection is capped on primary but not on secondary."
+                    )
+
+                sb.append(f"{primary_db.name}.{coll_name} collection is capped, ignoring.")
                 continue
-            # Still fail if the collection is capped on the secondary, but not on the primary.
             elif secondary_db.command({"collStats": coll_name})["capped"]:
                 success = False
-                sb.append("%s.%s collection is capped on secondary but not on primary."
-                          % (primary_db.name, coll_name))
+                sb.append(
+                    f"{primary_db.name}.{coll_name} collection is capped on secondary but not on primary."
+                )
+
                 continue
 
             success = False
@@ -431,7 +430,7 @@ class CheckReplDBHash(CustomBehavior):
         their _id.
         """
 
-        return [doc for doc in collection.find().sort("_id", pymongo.ASCENDING)]
+        return list(collection.find().sort("_id", pymongo.ASCENDING))
 
     @staticmethod
     def _get_collection_diff(primary_docs, secondary_docs, sb):
@@ -465,13 +464,11 @@ class CheckReplDBHash(CustomBehavior):
 
             if primary_doc["_id"] == secondary_doc["_id"]:
                 sb.append("Mismatching document:")
-                sb.append("    primary:   %s" % (primary_doc))
-                sb.append("    secondary: %s" % (secondary_doc))
+                sb.append(f"    primary:   {primary_doc}")
+                sb.append(f"    secondary: {secondary_doc}")
                 p_idx += 1
                 s_idx += 1
 
-            # One node was missing a document. Since the documents are sorted by _id, the doc with
-            # the smaller _id was the one that was skipped.
             elif primary_doc["_id"] < secondary_doc["_id"]:
                 missing_on_secondary.append(primary_doc)
 
@@ -511,15 +508,9 @@ class CheckReplDBHash(CustomBehavior):
         Appends information about anything that differed to 'sb'.
         """
 
-        missing_on_primary = set()
-        missing_on_secondary = set()
+        missing_on_secondary = set(primary_set - secondary_set)
 
-        for item in primary_set - secondary_set:
-            missing_on_secondary.add(item)
-
-        for item in secondary_set - primary_set:
-            missing_on_primary.add(item)
-
+        missing_on_primary = set(secondary_set - primary_set)
         if sb is not None:
             CheckReplDBHash._append_differences(
                 missing_on_primary, missing_on_secondary, item_type_name, sb)
@@ -554,12 +545,14 @@ class CheckReplDBHash(CustomBehavior):
         """
 
         if coll_names:
-            sb.append("Database %s contains the following collections: %s"
-                      % (database.name, coll_names))
+            sb.append(
+                f"Database {database.name} contains the following collections: {coll_names}"
+            )
+
             for coll_name in coll_names:
                 CheckReplDBHash._dump_all_documents(database, coll_name, sb)
         else:
-            sb.append("No collections in database %s." % (database.name))
+            sb.append(f"No collections in database {database.name}.")
 
     @staticmethod
     def _dump_all_documents(database, coll_name, sb):
@@ -567,13 +560,12 @@ class CheckReplDBHash(CustomBehavior):
         Appends the contents of 'coll_name' to 'sb'.
         """
 
-        docs = CheckReplDBHash._extract_documents(database[coll_name])
-        if docs:
-            sb.append("Documents in %s.%s:" % (database.name, coll_name))
+        if docs := CheckReplDBHash._extract_documents(database[coll_name]):
+            sb.append(f"Documents in {database.name}.{coll_name}:")
             for doc in docs:
-                sb.append("    %s" % (doc))
+                sb.append(f"    {doc}")
         else:
-            sb.append("No documents in %s.%s." % (database.name, coll_name))
+            sb.append(f"No documents in {database.name}.{coll_name}.")
 
 class TypeSensitiveSON(bson.SON):
     """

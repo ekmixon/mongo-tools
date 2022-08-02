@@ -84,16 +84,18 @@ class Job(object):
 
         test(self.report)
         if config.FAIL_FAST and not self.report.wasSuccessful():
-            test.logger.info("%s failed, so stopping..." % (test.shortDescription()))
-            raise errors.StopExecution("%s failed" % (test.shortDescription()))
+            test.logger.info(f"{test.shortDescription()} failed, so stopping...")
+            raise errors.StopExecution(f"{test.shortDescription()} failed")
 
         if not self.fixture.is_running():
             self.logger.error("%s marked as a failure because the fixture crashed during the test.",
                               test.shortDescription())
             self.report.setFailure(test, return_code=2)
             # Always fail fast if the fixture fails.
-            raise errors.StopExecution("%s not running after %s" %
-                                       (self.fixture, test.shortDescription()))
+            raise errors.StopExecution(
+                f"{self.fixture} not running after {test.shortDescription()}"
+            )
+
 
         self._run_hooks_after_tests(test)
 

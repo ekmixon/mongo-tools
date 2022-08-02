@@ -121,9 +121,9 @@ url_opener = urllib2.build_opener(digest_handler, HTTPErrorProcessor())
 
 def url(endpoint):
     if not endpoint.endswith('/'):
-        endpoint = '%s/' % endpoint
+        endpoint = f'{endpoint}/'
 
-    return '%s/%s' % (URL_ROOT.rstrip('/'), endpoint)
+    return f"{URL_ROOT.rstrip('/')}/{endpoint}"
 
 def post(endpoint, data, headers=None):
     data = json.dumps(data, encoding='utf-8')
@@ -146,8 +146,8 @@ def post(endpoint, data, headers=None):
     # eg "Content-Type: application/json; charset=utf-8"
     content_type = response_headers.get('content-type')
     match = re.match(r'(?P<mimetype>[^;]+).*(?:charset=(?P<charset>[^ ]+))?$', content_type)
-    if match and match.group('mimetype') == 'application/json':
-        encoding = match.group('charset') or 'utf-8'
+    if match and match['mimetype'] == 'application/json':
+        encoding = match['charset'] or 'utf-8'
         return json.load(response, encoding=encoding)
 
     return response.read()
@@ -181,29 +181,27 @@ def traceback_to_stderr(func):
 @traceback_to_stderr
 def get_or_create_build(builder, buildnum, extra={}):
     data = {'builder': builder, 'buildnum': buildnum}
-    data.update(extra)
+    data |= extra
     response = post('build', data)
-    if response is None:
-        return None
-    return response['id']
+    return None if response is None else response['id']
 
 @traceback_to_stderr
 def create_test(build_id, test_filename, test_command, test_phase):
-    response = post('build/%s/test' % build_id, {
-        'test_filename': test_filename,
-        'command': test_command,
-        'phase': test_phase,
-    })
-    if response is None:
-        return None
-    return response['id']
+    response = post(
+        f'build/{build_id}/test',
+        {
+            'test_filename': test_filename,
+            'command': test_command,
+            'phase': test_phase,
+        },
+    )
+
+    return None if response is None else response['id']
 
 @traceback_to_stderr
 def append_test_logs(build_id, test_id, log_lines):
-    response = post('build/%s/test/%s' % (build_id, test_id), data=log_lines)
-    if response is None:
-        return False
-    return True
+    response = post(f'build/{build_id}/test/{test_id}', data=log_lines)
+    return response is not None
 
 @traceback_to_stderr
 def append_global_logs(build_id, log_lines):
@@ -213,20 +211,21 @@ def append_global_logs(build_id, log_lines):
     may be output in here that is important but spans individual
     tests, the buildlogs webapp handles these logs specially.
     """
-    response = post('build/%s' % build_id, data=log_lines)
-    if response is None:
-        return False
-    return True
+    response = post(f'build/{build_id}', data=log_lines)
+    return response is not None
 
 @traceback_to_stderr
 def finish_test(build_id, test_id, failed=False):
-    response = post('build/%s/test/%s' % (build_id, test_id), data=[], headers={
-        'X-Sendlogs-Test-Done': 'true',
-        'X-Sendlogs-Test-Failed': failed and 'true' or 'false',
-    })
-    if response is None:
-        return False
-    return True
+    response = post(
+        f'build/{build_id}/test/{test_id}',
+        data=[],
+        headers={
+            'X-Sendlogs-Test-Done': 'true',
+            'X-Sendlogs-Test-Failed': failed and 'true' or 'false',
+        },
+    )
+
+    return response is not None
 
 def run_and_echo(command):
     """
@@ -321,7 +320,7 @@ def wrap_test(command):
     phase = os.environ.get('MONGO_PHASE', 'unknown')
     test_filename = os.environ.get('MONGO_TEST_FILENAME', 'unknown')
 
-    build_info = dict((k, v) for k, v in os.environ.items() if k.startswith('MONGO_'))
+    build_info = {k: v for k, v in os.environ.items() if k.startswith('MONGO_')}
     build_info.pop('MONGO_BUILDER_NAME', None)
     build_info.pop('MONGO_BUILD_NUMBER', None)
     build_info.pop('MONGO_PHASE', None)
@@ -337,13 +336,13 @@ def wrap_test(command):
 
     # the peculiar formatting here matches what is printed by
     # smoke.py when starting tests
-    output_url = '%s/build/%s/test/%s/' % (URL_ROOT.rstrip('/'), build_id, test_id)
+    output_url = f"{URL_ROOT.rstrip('/')}/build/{build_id}/test/{test_id}/"
     sys.stdout.write('                (output suppressed; see %s)\n' % output_url)
     sys.stdout.flush()
 
     callback = LogAppender(callback=append_test_logs, args=(build_id, test_id))
     returncode = loop_and_callback(command, callback)
-    failed = bool(returncode != 0)
+    failed = returncode != 0
 
     # this will append any remaining unsubmitted logs, or
     # return True if there are none left to submit
@@ -386,7 +385,7 @@ def wrap_global(command):
         sys.stderr.flush()
         return run_and_echo(command)
 
-    build_info = dict((k, v) for k, v in os.environ.items() if k.startswith('MONGO_'))
+    build_info = {k: v for k, v in os.environ.items() if k.startswith('MONGO_')}
     build_info.pop('MONGO_BUILDER_NAME', None)
     build_info.pop('MONGO_BUILD_NUMBER', None)
 

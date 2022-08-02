@@ -110,15 +110,17 @@ class TestReport(unittest.TestResult):
                 "test_id": test_id,
             }
 
-            test_info.url_endpoint = "%s/%s/" % (config.BUILDLOGGER_URL.rstrip("/"),
-                                                 endpoint.strip("/"))
+            test_info.url_endpoint = (
+                f'{config.BUILDLOGGER_URL.rstrip("/")}/{endpoint.strip("/")}/'
+            )
+
 
             self.logger.info("Writing output of %s to %s.",
                              test.shortDescription(),
                              test_info.url_endpoint)
 
         # Set up the test-specific logger.
-        logger_name = "%s:%s" % (test.logger.name, test.short_name())
+        logger_name = f"{test.logger.name}:{test.short_name()}"
         logger = logging.loggers.new_logger(logger_name, parent=test.logger)
         logging.config.apply_buildlogger_test_handler(logger,
                                                       self.logging_config,
@@ -169,7 +171,7 @@ class TestReport(unittest.TestResult):
 
         test_info = self._find_test_info(test)
         if test_info.end_time is None:
-            raise ValueError("stopTest was not called on %s" % (test.basename()))
+            raise ValueError(f"stopTest was not called on {test.basename()}")
 
         test_info.status = "error"
         test_info.return_code = 2
@@ -199,7 +201,7 @@ class TestReport(unittest.TestResult):
 
         test_info = self._find_test_info(test)
         if test_info.end_time is None:
-            raise ValueError("stopTest was not called on %s" % (test.basename()))
+            raise ValueError(f"stopTest was not called on {test.basename()}")
 
         test_info.status = "fail"
         test_info.return_code = return_code
@@ -307,7 +309,7 @@ class TestReport(unittest.TestResult):
             if test_info.test_id == test_id:
                 return test_info
 
-        raise ValueError("Details for %s not found in the report" % (test.basename()))
+        raise ValueError(f"Details for {test.basename()} not found in the report")
 
 
 class _TestInfo(object):

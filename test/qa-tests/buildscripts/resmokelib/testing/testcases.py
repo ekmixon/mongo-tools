@@ -75,7 +75,7 @@ class TestCase(unittest.TestCase):
         return self.test_name
 
     def shortDescription(self):
-        return "%s %s" % (self.test_kind, self.test_name)
+        return f"{self.test_kind} {self.test_name}"
 
     def configure(self, fixture):
         """
@@ -106,7 +106,7 @@ class TestCase(unittest.TestCase):
 
         self.return_code = process.wait()
         if self.return_code != 0:
-            raise self.failureException("%s failed" % (self.shortDescription()))
+            raise self.failureException(f"{self.shortDescription()} failed")
 
         self.logger.info("%s finished.", self.shortDescription())
 

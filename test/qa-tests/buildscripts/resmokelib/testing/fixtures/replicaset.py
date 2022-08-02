@@ -196,10 +196,10 @@ class ReplicaSetFixture(interface.ReplFixture):
         """
 
         if index == 0:
-            logger_name = "%s:primary" % (self.logger.name)
+            logger_name = f"{self.logger.name}:primary"
         else:
             suffix = str(index - 1) if self.num_nodes > 2 else ""
-            logger_name = "%s:secondary%s" % (self.logger.name, suffix)
+            logger_name = f"{self.logger.name}:secondary{suffix}"
 
         return logging.loggers.new_logger(logger_name, parent=self.logger)
 
@@ -208,4 +208,4 @@ class ReplicaSetFixture(interface.ReplFixture):
             raise ValueError("Must call setup() before calling get_connection_string()")
 
         conn_strs = [node.get_connection_string() for node in self.nodes]
-        return self.replset_name + "/" + ",".join(conn_strs)
+        return f"{self.replset_name}/" + ",".join(conn_strs)

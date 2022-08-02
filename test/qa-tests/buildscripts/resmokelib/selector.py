@@ -130,19 +130,19 @@ def filter_jstests(roots,
         ("include_with_all_tags", config.INCLUDE_WITH_ALL_TAGS),
         ("include_with_any_tags", config.INCLUDE_WITH_ANY_TAGS),
     )
-    for (tag_category, cmd_line_val) in cmd_line_values:
+    for tag_category, cmd_line_val in cmd_line_values:
         if cmd_line_val is not None:
             # Ignore the empty string when it is used as a tag. Specifying an empty string on the
             # command line allows a user to unset the list of tags specified in the YAML
             # configuration.
-            tags[tag_category] = set([tag for tag in cmd_line_val.split(",") if tag != ""])
+            tags[tag_category] = {tag for tag in cmd_line_val.split(",") if tag != ""}
         else:
             tags[tag_category] = set(utils.default_if_none(tags[tag_category], []))
 
     using_tags = 0
-    for name in tags:
-        if not utils.is_string_set(tags[name]):
-            raise TypeError("%s must be a list of strings" % (name))
+    for name, value in tags.items():
+        if not utils.is_string_set(value):
+            raise TypeError(f"{name} must be a list of strings")
         if len(tags[name]) > 0:
             using_tags += 1
 
@@ -183,13 +183,15 @@ def filter_jstests(roots,
             excluded.add(filename)
 
     if tags["include_with_all_tags"] or tags["include_with_any_tags"]:
-        if exclude_files:
-            return list((included & jstests) - excluded)
-        return list(included)
-    else:
-        if include_files:
-            return list(included | (jstests - excluded))
-        return list(jstests - excluded)
+        return (
+            list((included & jstests) - excluded)
+            if exclude_files
+            else list(included)
+        )
+
+    if include_files:
+        return list(included | (jstests - excluded))
+    return list(jstests - excluded)
 
 
 def _filter_by_filename(kind, universe, include_files, exclude_files):
